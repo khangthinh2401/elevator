@@ -30,11 +30,13 @@ GUEST *deleteGuest(GUEST *list, int position, int &size);
 GUEST *insertGuest(GUEST *list, int current_floor, int dest_floor, string direction, int &size);
 void solveUp(GUEST *uplist, GUEST *downlist, ELEVATOR &elevator);
 void solveDown(GUEST *uplist, GUEST *downlist, ELEVATOR &elevator);
-queue<GUEST> getuplist(GUEST *uplist, ELEVATOR &elevator);
-queue<GUEST> getdownlist(GUEST *downlist, ELEVATOR &elevator);
+vector<GUEST> getuplist(GUEST *uplist, ELEVATOR &elevator);
+vector<GUEST> getdownlist(GUEST *downlist, ELEVATOR &elevator);
 void printList(GUEST *list);
-bool compareFloorIncrease(GUEST &g1, GUEST &g2);
-bool compareFloorDecrease(GUEST &g1, GUEST &g2);
+bool compareDestFloorIncrease(GUEST &g1, GUEST &g2);
+bool compareDestFloorDecrease(GUEST &g1, GUEST &g2);
+bool compareCurrentFloorIncrease(GUEST &g1, GUEST &g2);
+bool compareCurrentFloorDecrease(GUEST &g1, GUEST &g2);
 int getLowestCurrentFloor(GUEST *list);
 int getHighestCurrentFloor(GUEST *list);
 
@@ -43,7 +45,6 @@ int uplistSize = 0;
 int queueUpSize = 0;
 int downlistSize = 0;
 int queueDownSize = 0;
-
 int main()
 {
     ELEVATOR elevator = {2, "NEUTRAL", 0, 0, 0};
@@ -121,13 +122,17 @@ GUEST *createGuest(int current_floor, int dest_floor, string direction)
 }
 GUEST *deleteGuest(GUEST *list, int position, int &size)
 {
+    if (size == 0)
+    {
+        return nullptr;
+    }
     GUEST *p = list;
     if (position == 0)
     {
-        p = p->next;
-        delete (list);
+        list = list->next;
+        delete (p);
         size--;
-        return p;
+        return list;
     }
     else if (position == size - 1)
     {
@@ -172,7 +177,7 @@ GUEST *insertGuest(GUEST *list, int current_floor, int dest_floor, string direct
 }
 void solveUp(GUEST *uplist, GUEST *downlist, ELEVATOR &elevator)
 {
-    queue<GUEST> q = getuplist(uplist, elevator);
+    vector<GUEST> vt_current = getuplist(uplist, elevator);
     int highestFloor = getHighestCurrentFloor(downlist);
     elevator.state = "GOINGUP";
     cout << "\n----------THE ELEVATOR IS GOING UP----------" << endl;
@@ -186,7 +191,7 @@ void solveUp(GUEST *uplist, GUEST *downlist, ELEVATOR &elevator)
             printf("\33[2K\r");
         }
         // get user in, have user out
-        if (!q.empty() && !vt_dest.empty() && (elevator.current_floor == q.front().current_floor) && (elevator.current_floor == vt_dest[0].dest_floor))
+        if (!vt_current.empty() && !vt_dest.empty() && (elevator.current_floor == vt_current[0].current_floor) && (elevator.current_floor == vt_dest[0].dest_floor))
         {
             if (elevator.current_floor == 12)
             {
@@ -194,15 +199,15 @@ void solveUp(GUEST *uplist, GUEST *downlist, ELEVATOR &elevator)
             }
             cout << "The elevator is at floor: " << elevator.current_floor << " - USER IN, USER OUT\n";
             // delete all people have been waiting at this floor
-            while (!q.empty() && q.front().current_floor <= elevator.current_floor)
+            while (!vt_current.empty() && vt_current[0].current_floor <= elevator.current_floor)
             {
-                if (q.front().current_floor < elevator.current_floor)
+                if (vt_current[0].current_floor < elevator.current_floor)
                 {
-                    uplist = insertGuest(uplist, q.front().current_floor, q.front().dest_floor, q.front().direction, uplistSize);
+                    uplist = insertGuest(uplist, vt_current[0].current_floor, vt_current[0].dest_floor, vt_current[0].direction, uplistSize);
                     uplistSize++;
                     check = true;
                 }
-                q.pop();
+                vt_current.erase(vt_current.begin());
                 queueUpSize--;
                 if (check)
                 {
@@ -219,7 +224,7 @@ void solveUp(GUEST *uplist, GUEST *downlist, ELEVATOR &elevator)
             continue;
         }
         // only user in
-        if (!q.empty() && elevator.current_floor == q.front().current_floor)
+        if (!vt_current.empty() && elevator.current_floor == vt_current[0].current_floor)
         {
             if (elevator.current_floor == 12)
             {
@@ -227,15 +232,15 @@ void solveUp(GUEST *uplist, GUEST *downlist, ELEVATOR &elevator)
             }
             cout << "The elevator is at floor: " << elevator.current_floor << " - USER IN\n";
             // delete all people have been waiting at this floor
-            while (!q.empty() && q.front().current_floor <= elevator.current_floor)
+            while (!vt_current.empty() && vt_current[0].current_floor <= elevator.current_floor)
             {
-                if (q.front().current_floor < elevator.current_floor)
+                if (vt_current[0].current_floor < elevator.current_floor)
                 {
-                    uplist = insertGuest(uplist, q.front().current_floor, q.front().dest_floor, q.front().direction, uplistSize);
+                    uplist = insertGuest(uplist, vt_current[0].current_floor, vt_current[0].dest_floor, vt_current[0].direction, uplistSize);
                     uplistSize++;
                     check = true;
                 }
-                q.pop();
+                vt_current.erase(vt_current.begin());
                 queueUpSize--;
                 if (check)
                 {
@@ -273,8 +278,7 @@ void solveUp(GUEST *uplist, GUEST *downlist, ELEVATOR &elevator)
 }
 void solveDown(GUEST *uplist, GUEST *downlist, ELEVATOR &elevator)
 {
-
-    queue<GUEST> q = getdownlist(downlist, elevator);
+    vector<GUEST> vt_current = getdownlist(downlist, elevator);
     int lowestFloor = getLowestCurrentFloor(uplist);
     elevator.state = "GOINGDOWN";
     cout << "\n---------THE ELEVATOR IS GOING DOWN---------" << endl;
@@ -288,7 +292,7 @@ void solveDown(GUEST *uplist, GUEST *downlist, ELEVATOR &elevator)
             printf("\33[2K\r");
         }
         // get user in, have user out
-        if (!q.empty() && !vt_dest.empty() && (elevator.current_floor == q.front().current_floor) && (elevator.current_floor == vt_dest[0].dest_floor))
+        if (!vt_current.empty() && !vt_dest.empty() && (elevator.current_floor == vt_current[0].current_floor) && (elevator.current_floor == vt_dest[0].dest_floor))
         {
             if (elevator.current_floor == 1)
             {
@@ -296,15 +300,15 @@ void solveDown(GUEST *uplist, GUEST *downlist, ELEVATOR &elevator)
             }
             cout << "The elevator is at floor: " << elevator.current_floor << " - USER IN, USER OUT\n";
             // delete all people have been waiting at this floor
-            while (!q.empty() && q.front().current_floor >= elevator.current_floor)
+            while (!vt_current.empty() && vt_current[0].current_floor >= elevator.current_floor)
             {
-                if (q.front().current_floor > elevator.current_floor)
+                if (vt_current[0].current_floor > elevator.current_floor)
                 {
-                    downlist = insertGuest(downlist, q.front().current_floor, q.front().dest_floor, q.front().direction, downlistSize);
+                    downlist = insertGuest(downlist, vt_current[0].current_floor, vt_current[0].dest_floor, vt_current[0].direction, downlistSize);
                     downlistSize++;
                     check = true;
                 }
-                q.pop();
+                vt_current.erase(vt_current.begin());
                 queueDownSize--;
                 if (check)
                 {
@@ -321,7 +325,7 @@ void solveDown(GUEST *uplist, GUEST *downlist, ELEVATOR &elevator)
             continue;
         }
         // only user in
-        if (!q.empty() && elevator.current_floor == q.front().current_floor)
+        if (!vt_current.empty() && elevator.current_floor == vt_current[0].current_floor)
         {
             if (elevator.current_floor == 1)
             {
@@ -329,15 +333,15 @@ void solveDown(GUEST *uplist, GUEST *downlist, ELEVATOR &elevator)
             }
             cout << "The elevator is at floor: " << elevator.current_floor << " - USER IN\n";
             // delete all people have been waiting at this floor
-            while (!q.empty() && q.front().current_floor >= elevator.current_floor)
+            while (!vt_current.empty() && vt_current[0].current_floor >= elevator.current_floor)
             {
-                if (q.front().current_floor > elevator.current_floor)
+                if (vt_current[0].current_floor > elevator.current_floor)
                 {
-                    downlist = insertGuest(downlist, q.front().current_floor, q.front().dest_floor, q.front().direction, downlistSize);
+                    downlist = insertGuest(downlist, vt_current[0].current_floor, vt_current[0].dest_floor, vt_current[0].direction, downlistSize);
                     downlistSize++;
                     check = true;
                 }
-                q.pop();
+                vt_current.erase(vt_current.begin());
                 queueDownSize--;
                 if (check)
                 {
@@ -373,56 +377,57 @@ void solveDown(GUEST *uplist, GUEST *downlist, ELEVATOR &elevator)
         solveUp(uplist, downlist, elevator);
     }
 }
-queue<GUEST> getuplist(GUEST *uplist, ELEVATOR &elevator)
+vector<GUEST> getuplist(GUEST *uplist, ELEVATOR &elevator)
 {
     vt_dest.clear();
-    queue<GUEST> result;
+    vector<GUEST> result;
     GUEST *p = uplist;
-    GUEST *firstGuest = uplist;
     int i = 0;
     while (p != nullptr)
     {
         if (p->current_floor >= elevator.current_floor)
         {
-            result.push(*p);
             vt_dest.push_back(*p);
-            p = p->next;
+            result.push_back(*p);
             uplist = deleteGuest(uplist, i, uplistSize);
+            p = p->next;
             continue;
         }
         p = p->next;
         i++;
     }
     // sort vector
-    if (!vt_dest.empty())
+    if (vt_dest.size() > 1)
     {
-        sort(vt_dest.begin(), vt_dest.end(), compareFloorIncrease);
+        sort(vt_dest.begin(), vt_dest.end(), compareDestFloorIncrease);
+        sort(result.begin(), result.end(), compareCurrentFloorIncrease);
     }
     return result;
 }
-queue<GUEST> getdownlist(GUEST *downlist, ELEVATOR &elevator)
+vector<GUEST> getdownlist(GUEST *downlist, ELEVATOR &elevator)
 {
     vt_dest.clear();
-    queue<GUEST> result;
+    vector<GUEST> result;
     GUEST *p = downlist;
     int i = 0;
     while (p != nullptr)
     {
         if (p->current_floor <= elevator.current_floor)
         {
-            result.push(*p);
+            result.push_back(*p);
             vt_dest.push_back(*p);
-            p = p->next;
             downlist = deleteGuest(downlist, i, downlistSize);
+            p = p->next;
             continue;
         }
         p = p->next;
         i++;
     }
     // sort vector
-    if (!vt_dest.empty())
+    if (vt_dest.size() > 1)
     {
-        sort(vt_dest.begin(), vt_dest.end(), compareFloorDecrease);
+        sort(vt_dest.begin(), vt_dest.end(), compareDestFloorDecrease);
+        sort(result.begin(), result.end(), compareCurrentFloorDecrease);
     }
     return result;
 }
@@ -464,11 +469,19 @@ int getHighestCurrentFloor(GUEST *list)
     }
     return max;
 }
-bool compareFloorIncrease(GUEST &g1, GUEST &g2)
+bool compareDestFloorIncrease(GUEST &g1, GUEST &g2)
 {
     return g1.dest_floor < g2.dest_floor;
 }
-bool compareFloorDecrease(GUEST &g1, GUEST &g2)
+bool compareCurrentFloorIncrease(GUEST &g1, GUEST &g2)
+{
+    return g1.current_floor < g2.current_floor;
+}
+bool compareDestFloorDecrease(GUEST &g1, GUEST &g2)
 {
     return g1.dest_floor > g2.dest_floor;
+}
+bool compareCurrentFloorDecrease(GUEST &g1, GUEST &g2)
+{
+    return g1.current_floor > g2.current_floor;
 }
