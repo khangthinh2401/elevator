@@ -25,20 +25,20 @@ struct ELEVATOR
     int d1, d2, d3;
 };
 
-GUEST *createGuest(int _current_floor, int _dest_floor, string _direction);
-GUEST *deleteGuest(GUEST *list, int position, int &size);
-GUEST *insertGuest(GUEST *list, int current_floor, int dest_floor, string direction, int &size);
-void solveUp(GUEST *uplist, GUEST *downlist, ELEVATOR &elevator);
-void solveDown(GUEST *uplist, GUEST *downlist, ELEVATOR &elevator);
-vector<GUEST> getuplist(GUEST *uplist, ELEVATOR &elevator);
-vector<GUEST> getdownlist(GUEST *downlist, ELEVATOR &elevator);
+GUEST *createGuest(int, int, string);
+void deleteGuest(GUEST *&, int, int &);
+GUEST *insertGuest(GUEST *&, int, int, string, int &);
+void solveUp(GUEST *&, GUEST *&, ELEVATOR &);
+void solveDown(GUEST *&, GUEST *&, ELEVATOR &);
+vector<GUEST> getuplist(GUEST *&, ELEVATOR &);
+vector<GUEST> getdownlist(GUEST *&, ELEVATOR &);
 void printList(GUEST *list);
 bool compareDestFloorIncrease(GUEST &g1, GUEST &g2);
 bool compareDestFloorDecrease(GUEST &g1, GUEST &g2);
 bool compareCurrentFloorIncrease(GUEST &g1, GUEST &g2);
 bool compareCurrentFloorDecrease(GUEST &g1, GUEST &g2);
-int getLowestCurrentFloor(GUEST *list);
-int getHighestCurrentFloor(GUEST *list);
+int getLowestCurrentFloor(GUEST *&list);
+int getHighestCurrentFloor(GUEST *&list);
 
 vector<GUEST> vt_dest;
 int uplistSize = 0;
@@ -115,55 +115,47 @@ void printList(GUEST *list)
         p = p->next;
     }
 }
-GUEST *createGuest(int current_floor, int dest_floor, string direction)
+void createGuest(GUEST *&list, int current_floor, int dest_floor, string direction)
 {
-    GUEST *temp = new GUEST{current_floor, dest_floor, direction, nullptr};
-    return temp;
+    list = new GUEST{current_floor, dest_floor, direction, nullptr};
 }
-GUEST *deleteGuest(GUEST *list, int position, int &size)
+void deleteGuest(GUEST *&list, int position, int &size)
 {
-    if (size == 0)
-    {
-        return nullptr;
-    }
-    GUEST *p = list;
     if (position == 0)
     {
+        GUEST *p = list;
         list = list->next;
-        delete (p);
-        size--;
-        return list;
+        free(p);
     }
     else if (position == size - 1)
     {
+        GUEST *p = list;
         while (p->next->next != nullptr)
         {
             p = p->next;
         }
-        delete (p->next);
+        free(p->next);
         size--;
         p->next = nullptr;
-        return list;
     }
     else
     {
+        GUEST *p = list;
         for (int i = 0; i < position - 1; i++)
         {
             p = p->next;
         }
         GUEST *temp = p->next;
         p->next = p->next->next;
-        delete (temp);
+        free(temp);
         size--;
-        return list;
     }
-    return list;
 }
-GUEST *insertGuest(GUEST *list, int current_floor, int dest_floor, string direction, int &size)
+GUEST *insertGuest(GUEST *&list, int current_floor, int dest_floor, string direction, int &size)
 {
-    if (size == 0)
+    if (list == nullptr)
     {
-        list = createGuest(current_floor, dest_floor, direction);
+        createGuest(list, current_floor, dest_floor, direction);
         return list;
     }
     GUEST *p = list;
@@ -171,14 +163,15 @@ GUEST *insertGuest(GUEST *list, int current_floor, int dest_floor, string direct
     {
         p = p->next;
     }
-    GUEST *temp = new GUEST{current_floor, dest_floor, direction, nullptr};
+    GUEST *temp = new GUEST{current_floor, dest_floor, direction};
     p->next = temp;
     return list;
 }
-void solveUp(GUEST *uplist, GUEST *downlist, ELEVATOR &elevator)
+void solveUp(GUEST *&uplist, GUEST *&downlist, ELEVATOR &elevator)
 {
     vector<GUEST> vt_current = getuplist(uplist, elevator);
     int highestFloor = getHighestCurrentFloor(downlist);
+
     elevator.state = "GOINGUP";
     cout << "\n----------THE ELEVATOR IS GOING UP----------" << endl;
     while (elevator.current_floor <= 12 && !vt_dest.empty() || (elevator.current_floor <= 12 && elevator.current_floor <= highestFloor))
@@ -276,7 +269,7 @@ void solveUp(GUEST *uplist, GUEST *downlist, ELEVATOR &elevator)
         solveDown(uplist, downlist, elevator);
     }
 }
-void solveDown(GUEST *uplist, GUEST *downlist, ELEVATOR &elevator)
+void solveDown(GUEST *&uplist, GUEST *&downlist, ELEVATOR &elevator)
 {
     vector<GUEST> vt_current = getdownlist(downlist, elevator);
     int lowestFloor = getLowestCurrentFloor(uplist);
@@ -377,7 +370,7 @@ void solveDown(GUEST *uplist, GUEST *downlist, ELEVATOR &elevator)
         solveUp(uplist, downlist, elevator);
     }
 }
-vector<GUEST> getuplist(GUEST *uplist, ELEVATOR &elevator)
+vector<GUEST> getuplist(GUEST *&uplist, ELEVATOR &elevator)
 {
     vt_dest.clear();
     vector<GUEST> result;
@@ -389,7 +382,7 @@ vector<GUEST> getuplist(GUEST *uplist, ELEVATOR &elevator)
         {
             vt_dest.push_back(*p);
             result.push_back(*p);
-            uplist = deleteGuest(uplist, i, uplistSize);
+            deleteGuest(uplist, i, uplistSize);
             p = p->next;
             continue;
         }
@@ -404,7 +397,7 @@ vector<GUEST> getuplist(GUEST *uplist, ELEVATOR &elevator)
     }
     return result;
 }
-vector<GUEST> getdownlist(GUEST *downlist, ELEVATOR &elevator)
+vector<GUEST> getdownlist(GUEST *&downlist, ELEVATOR &elevator)
 {
     vt_dest.clear();
     vector<GUEST> result;
@@ -416,7 +409,7 @@ vector<GUEST> getdownlist(GUEST *downlist, ELEVATOR &elevator)
         {
             result.push_back(*p);
             vt_dest.push_back(*p);
-            downlist = deleteGuest(downlist, i, downlistSize);
+            deleteGuest(downlist, i, downlistSize);
             p = p->next;
             continue;
         }
@@ -431,9 +424,9 @@ vector<GUEST> getdownlist(GUEST *downlist, ELEVATOR &elevator)
     }
     return result;
 }
-int getLowestCurrentFloor(GUEST *list)
+int getLowestCurrentFloor(GUEST *&list)
 {
-    if (uplistSize <= 0)
+    if (list == nullptr)
     {
         return 13;
     }
@@ -450,9 +443,9 @@ int getLowestCurrentFloor(GUEST *list)
     }
     return lowest;
 }
-int getHighestCurrentFloor(GUEST *list)
+int getHighestCurrentFloor(GUEST *&list)
 {
-    if (downlistSize <= 0)
+    if (list == nullptr)
     {
         return -1;
     }
